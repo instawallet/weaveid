@@ -1,7 +1,7 @@
 ![hero](https://i.imgur.com/MDhVh9q.png)
 
 # WeaveID
-A non-custodial wallet for the Arweave blockchain. Login to your favorite dApps from anywhere!
+A non-custodial wallet for the Arweave blockchain. Login to your favorite dApps from anywhere! Visit our homepage for more info: https://weaveid.io
 
 # Live Demo:
 
