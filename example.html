@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Arweave JS dApp Example</title>
+    <script src="https://unpkg.com/arweave/bundles/web.bundle.js"></script>
+
+    <script>
+    var testTransaction;
+
+    const arweave = Arweave.init({
+        host: 'arweave.net',// Hostname or IP address for a Arweave host
+        port: 443,          // Port
+        protocol: 'https',  // Network protocol http or https
+        timeout: 20000,     // Network request timeouts in milliseconds
+        logging: false,     // Enable network request logging
+      });
+    arweave.network.getInfo().then(console.log);
+
+    function createTransaction() {
+      if(arweave) {
+        arweave.createTransaction({
+             target: 'W46vSpKFlVnYyEzCn39bcwGzHslfucPZhcBsmed5uQU',
+             quantity: arweave.ar.arToWinston('0.00005')
+         }, 0).then(function(tx) {
+           console.log("Transaction created!", tx);
+           testTransaction = tx;
+           updateUI();
+           // We can now call signTransaction(tx);
+         });
+     }
+    }
+
+    function signTransaction(tx) {
+      console.log("Signing...", tx);
+      arweave.transactions.sign(tx).then((response) => {
+        console.log("Transaction signed: ", response, tx);
+        testTransaction = response;
+        updateUI();
+      });
+    }
+
+    function postTransaction(tx) {
+      console.log("Posting.....", tx);
+      arweave.transactions.post(tx).then((response) => {
+        console.log("Transaction posted! ", response);
+        testTransaction = response;
+        updateUI();
+      });
+    }
+
+    function updateUI() {
+      document.getElementById("transaction-preview").innerHTML = JSON.stringify(testTransaction);
+    }
+    </script>
+</head>
+<body>
+
+    <br />
+    1. The login button: <script type="module" src="/js/embed.js" id="weaveid-include"></script> will appear wherever you place the <code>&lt;script&gt;</code> tag. Click it to get started.
+    <br /><br />
+    2.
+    <button onclick="createTransaction();">Create transaction</button> and then
+    <button onclick="signTransaction(testTransaction);">Sign transaction</button> and finally
+    <button onclick="postTransaction(testTransaction);">Post transaction</button>
+    <br /><br />
+    <b>Transaction Preview:</b><br />
+    <div id="transaction-preview">null</div>
+    <br /><br />
+
+</body>
+</html>

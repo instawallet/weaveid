@@ -1,0 +1,30 @@
+#popup {
+  display: none;
+  position: fixed;
+  top: 12%;
+  left: 26%;
+  width: 48%; /* 70% */
+  height: 70%;
+  background-color: white;
+  z-index: 10;
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.42);
+}
+#popup iframe {
+  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+#popupdarkbg {
+  position: fixed;
+  z-index: 5;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: none;
+}

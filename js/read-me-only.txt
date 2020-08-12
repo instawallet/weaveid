@@ -1,0 +1,5 @@
+You have to run:
+
+browserify index.js --s module > bundle.js
+
+To bundle all of the human-crypto-keys library + it's dependencies, and expose it's functions in 'module'
