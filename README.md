@@ -3,6 +3,10 @@
 # WeaveID
 A non-custodial wallet for the Arweave blockchain. Login to your favorite dApps from anywhere!
 
+# Live Demo:
+
+Try it out here: https://weaveid.io/example.html
+
 # How It Works
 To add WeaveID to your Arweave dApp, just add the following snippet after you include Arweave JS:
 ```javascript
