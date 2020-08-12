@@ -18,3 +18,9 @@ To add WeaveID to your Arweave dApp, just add the following snippet after you in
 * Non-Custodial: You own your private keys and we never see them.
 * Supports multiple cryptocurrencies (Coming soon)
 * Free for developers
+
+# Token & Community
+
+You can find our PST and our community DAO here: https://community.xyz/#SFq58czx0CCdflH9AFruAMr5fLPqIT0ddzsnQW5id0w
+
+We have minted **10,000,000 WID** in anticipation of future investors.
