@@ -10,8 +10,11 @@ Try it out here: https://weaveid.io/example.html
 # How It Works
 To add WeaveID to your Arweave dApp, just add the following snippet after you include Arweave JS:
 ```javascript
-<script type="module" src="https://weaveid.io/js/embed.js" id="weaveid-include"></script>
+<script type="module" src="https://arweave.net/U_AANi5gzPjdnEnO-edyjBCzn7gq0WjpIOMZRLHelwg" id="weaveid-include"></script>
 ```
+
+If the permaweb version of the script stops working, you can include our self-hosted version instead: https://weaveid.io/js/embed.js
+
 # Features
 * Works on any device
 * Access your wallet with just an email & password (like a normal app!)
@@ -24,3 +27,8 @@ To add WeaveID to your Arweave dApp, just add the following snippet after you in
 You can find our PST and our community DAO here: https://community.xyz/#SFq58czx0CCdflH9AFruAMr5fLPqIT0ddzsnQW5id0w
 
 We have minted **10,000,000 WID** in anticipation of future investors.
+
+# Permaweb Links
+
+* Embed file to add WeaveID to your dApp: https://arweave.net/U_AANi5gzPjdnEnO-edyjBCzn7gq0WjpIOMZRLHelwg
+* Example page to try WeaveID: https://arweave.net/RMDClC33WjRppgNPw0F-bFHQm__MkXW4Rhhl4Gr7G8U
