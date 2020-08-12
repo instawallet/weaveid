@@ -32,3 +32,4 @@ We have minted **10,000,000 WID** in anticipation of future investors.
 
 * Embed file to add WeaveID to your dApp: https://arweave.net/U_AANi5gzPjdnEnO-edyjBCzn7gq0WjpIOMZRLHelwg
 * Example page to try WeaveID: https://arweave.net/RMDClC33WjRppgNPw0F-bFHQm__MkXW4Rhhl4Gr7G8U
+* ArweaveApps.com link: https://mtfvznw2pwxykoicvxpoe7ao5rp4nhaueueux2bbe4klxankdhra.arweave.net/ZMtcttp9r4U5Aq3e4nwO7F_GnBQlCUvoIScUu4GqGeI/#
