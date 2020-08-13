@@ -26,7 +26,7 @@ If the permaweb version of the script stops working, you can include our self-ho
 
 You can find our PST and our community DAO here: https://community.xyz/#SFq58czx0CCdflH9AFruAMr5fLPqIT0ddzsnQW5id0w
 
-We have minted **10,000,000 WID** in anticipation of future investors.
+We have minted **10,000,000 WID** in anticipation of future investors. Every time a user transacts with WeaveID, we take a 0.1% transaction fee and pay it out proportionally to all our PST holders 🙂
 
 # Permaweb Links
 
