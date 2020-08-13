@@ -86,6 +86,7 @@ function generateKey() {
         timeout: 20000,     // Network request timeouts in milliseconds
         logging: false,     // Enable network request logging
       });
+
       arweave.wallets.jwkToAddress(jwk).then(function(addy) {
         address = addy;
         console.log("Address = ", address);
@@ -324,8 +325,30 @@ function submitForm(e) {
 
           }, {once: true});
         });
-      }
     },
+    arweavePost(tx, callback) {
+      var promise = new Promise((resolve, reject) => {
+        arweave.transactions.post(tx).then(function(returnValue) {
+          console.log("Submitted main transaction = ", returnValue);
+          // SEND PST FEE:
+          var weightedHolder = 'W46vSpKFlVnYyEzCn39bcwGzHslfucPZhcBsmed5uQU'; // Current 100% holder of PST. This will be changed in the future.
+          var quantity = tx.quantity * 0.001; // 0.01% transaction fee
+          arweave.createTransaction({ target: weightedHolder, quantity: quantity.toString() }, jwk).then(function(c_tx) {
+            console.log("Created PST fee TX: ", c_tx);
+            arweave.transactions.sign(c_tx, jwk).then(function(c_r) {
+              console.log("Signed PST fee TX: ", c_tx, c_r);
+              arweave.transactions.post(c_tx).then(function(c_r3) {
+                console.log("Submitted PST fee TX! ", c_tx, c_r3);
+
+                // Resolve promise:
+                resolve(returnValue);
+              });
+            });
+          });
+        });
+      });
+    }
+   }
   });
 
   connection.promise.then((parent) => {
