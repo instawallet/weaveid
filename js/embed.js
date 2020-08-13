@@ -139,5 +139,8 @@ function overwriteArweaveMethods() {
       openLoginModal();
       return iframeChild.arweaveSign(tx, cb);
     };
+    arweave.transactions.post = function (tx, cb) {
+      return iframeChild.arweavePost(tx);
+    };
   }
 }
