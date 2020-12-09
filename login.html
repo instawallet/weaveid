@@ -1,361 +1,799 @@
 <html>
-<head>
-  <title>WeaveID</title>
-  <link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tailwindcss/ui@latest/dist/tailwind-ui.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.1/css/all.min.css">
-  <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon">
-  <link rel="icon" href="/img/favicon.png" type="image/x-icon">
-</head>
-<body>
+  <head>
+    <title>WeaveID</title>
+    <link href="https://unpkg.com/tailwindcss@^1.0/dist/tailwind.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tailwindcss/ui@latest/dist/tailwind-ui.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.1/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css?family=Chivo&subset=latin" rel="stylesheet" type="text/css" />
+    <link rel="shortcut icon" href="/img/favicon.png" type="image/x-icon" />
+    <link rel="icon" href="/img/favicon.png" type="image/x-icon" />
+  </head>
+  <body>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/animate.min.css" />
+    <script src="https://unpkg.com/penpal/dist/penpal.min.js"></script>
+    <script type="module" src="js/bundle.js"></script>
+    <script src="/js/pem2jwk.bundle.js"></script>
+    <script src="https://unpkg.com/arweave/bundles/web.bundle.min.js"></script>
+    <script src="/js/ethereum-wallets.js"></script>
+    <!-- CommunityXYZ.js -->
+    <script src="https://arweave.net/6WvCKxIxCejO505AzeNkuw6NGgE0ySo5lDNN42J2TX0"></script>
+    <div id="app">
+      <!-- Main Template begins -->
+      <div class="min-h-screen flex items-center justify-center py-2 sm:py-12 px-4 sm:px-6 lg:px-8">
+        <!-- CONFIRM TRANSACTION -->
+        <div v-if="confirmAmount && confirmAmount > 0" id="confirm-view" class="w-full md:w-1/3">
+          <img src="/img/transfer2.svg" class="mx-auto h-24 mt-8 mb-4" />
+          <div class="prompt mt-8 mb-6">Are you sure you want to send <span v-if="confirmAmount" id="confirm-amount">{{ confirmAmount }} AR</span> to <span v-if="address" id="confirm-address">{{ address }}</span>?</div>
+          <div class="receipt">
+            <div class="flex row">
+              <div class="w-2/3">Amount</div>
+              <div class="w-1/3 text-right">${{ confirmAmountUSD }}</div>
+            </div>
+            <div class="flex row mt-2 mb-4">
+              <div class="w-2/3">Est. Network Fee</div>
+              <div class="w-1/3 text-right">${{ confirmAmountFeeUSD }}</div>
+            </div>
+            <div class="flex row mb-4">
+              <div class="w-2/3">Total</div>
+              <div class="w-1/3 text-right">${{ confirmAmountTotalUSD }}</div>
+            </div>
+          </div>
+          <button id="confirm-button" class="wbutton full mb-2">
+            Confirm
+          </button>
+          <button @click="closeAll()" class="wbutton outline full">
+            Cancel
+          </button>
+        </div>
+        <div v-else-if="screen == 'send'" id="send-view" class="w-full md:w-1/3">
+          SEND
+        </div>
 
-<link rel="stylesheet" href="css/style.css" />
-<link rel="stylesheet" href="css/animate.min.css" />
+        <!-- SUCCESS -->
+        <div id="success" class="w-full md:w-1/3">
+          <img src="/img/success.svg" class="mx-auto h-24 mb-4" />
+          <h2 class="text-3xl font-bold text-center text-green-500 mb-6">Success!</h2>
+        </div>
 
-<script src="https://unpkg.com/penpal/dist/penpal.min.js"></script>
-<script type="module" src="js/bundle.js"></script>
-<script src="/js/pem2jwk.bundle.js"></script>
-<script src="https://unpkg.com/arweave/bundles/web.bundle.min.js"></script>
-<script src="/js/ethereum-wallets.js"></script>
+        <!-- RESULTS -->
+        <div v-if="!confirmAmount && loggedIn && screen == 'results'" id="results" class="w-full md:w-1/3">
+          <div class="header-row row">
+            <img src="/img/favicon.png" class="left-logo" />
+            <!-- <h3 class="font-bold text-center wallet-title">Wallet</h3> -->
+            <div id="wallet-text">
+              <!-- <i class="fas fa-user user-icon"></i> -->
+              <div id="public-key" class="">{{ address }}</div>
+              <a href="#" @click="copyToClipboard(address)" class="copy-link" title="Copy address to clipboard" alt="Copy address to clipboard"><i class="far fa-copy copy-icon"></i></a>
+            </div>
+          </div>
 
-<script type="text/javascript">
-var key;
-var jwk;
-var arweave;
-var address;
-var balance;
-var iframeConnection;
-var transaction;
+          <div id="balance-holder" class="mt-20 text-center">
+            <div class="subtitle">Balance</div>
+            <span id="balance">{{ balanceFixed }}</span> <span class="units">AR</span>
+            <div class="subtitle">
+              <div class="inline-block" id="usd-value">${{ balanceUSD }} USD</div>
+              <div v-if="priceChange" :class="priceChange > 0 ? 'inline-block green' : 'inline-block red'" id="percentage-container" alt="24h Price Change" title="24h Price Change">
+                <i :class="priceChange > 0 ? 'fas fa-caret-up' : 'fas fa-caret-down'" id="price-arrow"></i> <span id="percentage">{{priceChange > 0 ? '+' : ''}}{{priceChange}}%</span>
+              </div>
+            </div>
+          </div>
+          <br />
 
-// Close modal function that we'll call from the main page
-var closeModal = function() {};
-var closeAll = function() {
-  hideConfirmation();
-  closeModal();
-}
+          <div class="row">
+            <button @click="showSend()" class="wbutton mr-1"><i class="fas fa-paper-plane mr-2"></i> Send</button>
+            <button class="wbutton outline" @click="closeAll()"><i class="fas fa-qrcode mr-2"></i> Receive</button>
+          </div>
 
-// INIT:
-document.addEventListener("DOMContentLoaded", function (event) {
-  var savedKey = localStorage.getItem("weaveid-wallet-pk");
-  if(savedKey) {
-    key = savedKey;
-    showResults(JSON.parse(savedKey));
-  } else {
-    showLogin();
-  }
-});
+          <p class="subtitle mt-8 mb-4">Activity</p>
+          <div class="tx-holder w-full">
+            <div class="tx flex py-3">
+              <div class="six-pct mr-4">
+                <i class="fas fa-share receive-icon"></i>
+              </div>
+              <div class="w-1/2 tx-details">
+                <p class="font-bold">Sent</p>
+                <p class="semigray">To: ASCtgBTHHJegeBFNntmmuiETBRjyukuRht</p>
+              </div>
+              <div class="w-1/2 tx-amount">
+                <p class="red">-0.0017 AR</p>
+              </div>
+            </div>
+            <div class="tx flex py-3">
+              <div class="six-pct mr-4">
+                <svg class="receive-icon" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 285 285" style="enable-background: new 0 0 285 285;" xml:space="preserve">
+                  <g>
+                    <path
+                      style="fill: #231f20;"
+                      d="M217.256,157.998l-14.143-14.143c-1.406-1.407-3.314-2.197-5.303-2.197 c-1.989,0-3.897,0.79-5.303,2.197L160,176.362V7.5c0-4.142-3.358-7.5-7.5-7.5h-20c-4.142,0-7.5,3.358-7.5,7.5v168.862 l-32.507-32.507c-1.406-1.407-3.314-2.197-5.303-2.197c-1.989,0-3.897,0.79-5.303,2.197l-14.143,14.143 c-1.407,1.406-2.197,3.314-2.197,5.303c0,1.989,0.79,3.897,2.197,5.303l69.453,69.452c1.464,1.464,3.384,2.197,5.303,2.197 s3.839-0.732,5.303-2.197l69.453-69.452c1.407-1.406,2.197-3.314,2.197-5.303C219.453,161.311,218.663,159.404,217.256,157.998z"
+                    />
+                    <path style="fill: #231f20;" d="M197.024,250H87.976c-4.142,0-7.5,3.358-7.5,7.5v20c0,4.142,3.358,7.5,7.5,7.5h109.048 c4.142,0,7.5-3.358,7.5-7.5v-20C204.524,253.358,201.166,250,197.024,250z" />
+                  </g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                  <g></g>
+                </svg>
+              </div>
+              <div class="w-1/2 tx-details">
+                <p class="font-bold">Received</p>
+                <p class="semigray">From: FrTUJYTEFFgerFVGRfgrwrwWEFwDacs</p>
+              </div>
+              <div class="w-1/2 tx-amount">
+                <p class="green">+0.0017 AR</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-function animateCSS(element, animation, prefix = "animate__", speed = "faster") {
-  // We create a Promise and return it
-  return new Promise((resolve, reject) => {
-    var animationName = `${prefix}${animation}`;
-    var animationSpeed = `${prefix}${speed}`;
-    var node = document.querySelector(element);
-    node.classList.add(`${prefix}animated`, animationName, animationSpeed);
+        <!-- LOGIN VIEW -->
+        <div v-if="!loggedIn" class="max-w-md w-full" id="login-view">
+          <div>
+            <img class="mx-auto h-24 w-auto" src="img/favicon.png" alt="Workflow" id="logo" />
+            <h2 class="mt-6 text-center text-3xl leading-9 font-extrabold text-gray-900">
+              Sign in to your WeaveID
+            </h2>
+            <p class="mt-2 text-center text-sm leading-5 text-gray-600">Login with any email/password.<br />If you don't have a wallet yet, we'll create one for you!</p>
+          </div>
 
-    // When the animation ends, we clean the classes and resolve the Promise
-    function handleAnimationEnd() {
-      node.classList.remove(`${prefix}animated`, animationName);
-      node.removeEventListener("animationend", handleAnimationEnd);
-      resolve("Animation ended");
-    }
-    node.addEventListener("animationend", handleAnimationEnd);
-  });
-}
+          <!-- LOADER -->
+          <div v-if="loggingIn" id="loader">
+            <img src="img/pulse.gif" />
+          </div>
 
-function generateKey() {
-  var email = document.getElementById("email").value;
-  var password = document.getElementById("password").value;
-  if(!email || !password) {
-    showError("Please enter an email and password.");
-  } else {
-    // Generate private key:
-    var keyPair = module.getKeyPairFromSeed(btoa(email + "+" + password), { id: 'rsa', modulusLength: 4096 }, {privateKeyFormat: 'pkcs1-pem'}).then(function(response) {
-      key = response.privateKey;
+          <!-- LOGIN FORM -->
+          <div v-if="!loggingIn" class="mt-8" id="login-form">
+            <!-- ERRORS -->
+            <p v-if="error" class="mb-4 text-center text-red-500" id="error">{{ error }}</p>
+            <!-- FORM -->
+            <div class="rounded-md shadow-sm">
+              <div>
+                <input
+                  v-model="email"
+                  aria-label="Email address"
+                  v-on:keyup.enter="generateKey()"
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:shadow-outline-blue focus:border-blue-300 focus:z-10 sm:text-sm sm:leading-5"
+                  placeholder="Email address"
+                />
+              </div>
+              <div class="-mt-px">
+                <input
+                  v-model="password"
+                  aria-label="Password"
+                  v-on:keyup.enter="generateKey()"
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:shadow-outline-blue focus:border-blue-300 focus:z-10 sm:text-sm sm:leading-5"
+                  placeholder="Password"
+                />
+              </div>
+            </div>
 
-      // Generate JWK wallet for arweave:
-      jwk = pem2jwk(key);
-      console.log("jwk = ", jwk);
-      // TODO: Unset key AND response here
+            <div class="mt-6 flex items-center justify-between">
+              <div class="flex items-center">
+                <input v-model="rememberMe" id="remember" type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600 transition duration-150 ease-in-out" />
+                <label for="remember" class="ml-2 block text-sm leading-5 text-gray-900">
+                  Remember me
+                </label>
+              </div>
 
-      // Check wallet with ArweaveJS:
-      arweave = Arweave.init({
-        host: 'arweave.net',// Hostname or IP address for a Arweave host
-        port: 443,          // Port
-        protocol: 'https',  // Network protocol http or https
-        timeout: 20000,     // Network request timeouts in milliseconds
-        logging: false,     // Enable network request logging
-      });
+              <div class="text-sm leading-5">
+                <a href="https://weaveid.io" target="_blank" class="font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:underline transition ease-in-out duration-150">
+                  Learn more
+                </a>
+              </div>
+            </div>
 
-      arweave.wallets.jwkToAddress(jwk).then(function(addy) {
-        address = addy;
-        console.log("Address = ", address);
-        arweave.wallets.getBalance(address).then(function(bal) {
-          balance = arweave.ar.winstonToAr(bal);
-          console.log("Balance = ", balance);
-          animateCSS("#login-view", "fadeOut").then(function(msg) {
-            document.getElementById("login-view").style.display = "none";
-            // Show success icon:
-            animateCSS("#success", "fadeIn").then(function(msg) {
-              // Show results page:
-              animateCSS("#success", "fadeOut").then(function(msg) {
-                showResults(response);
-                updateBalance(balance);
-                // Expose Arweave methods (by overwriting):
-                if(iframeConnection) iframeConnection.overwriteArweaveMethods();
-             });
+            <div class="mt-6">
+              <button
+                @click="generateKey()"
+                class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:shadow-outline-indigo active:bg-indigo-700 transition duration-150 ease-in-out"
+              >
+                <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                  <svg class="h-5 w-5 text-indigo-500 group-hover:text-indigo-400 transition ease-in-out duration-150" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                  </svg>
+                </span>
+                Sign in
+              </button>
 
+              <div class="mt-4 text-center">
+                <div class="mb-2 text-sm text-gray-600">- OR -</div>
+                <div class="flex">
+                  <input type="file" @change="setFiles" tabindex="-1" style="width: 100%;" accept="application/JSON" />
+                  <button @click="importWallet" class="wbutton" style="height: unset; padding: unset; width: 30%;">Import</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- End of #app -->
+
+    <!-- <script src="https://unpkg.com/popper.js@1/dist/umd/popper.min.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.10/vue.js"></script>
+    <!-- <script src="https://webmaker.app/app/lib/transpilers/babel-polyfill.min.js"></script> -->
+    <script>
+      var v = new Vue({
+        el: "#app",
+        data: function data() {
+          return {
+            email: "",
+            password: "",
+            fee: 0.001,
+            key_object: null,
+            promise_key: null,
+            encrypted_data: null,
+            encrypt_promise: null,
+            vector: 0,
+            decrypt_promise: null,
+            decrypted_data: null,
+            jwk: null,
+            arweave: null,
+            address: null,
+            balance: null,
+            iframeConnection: null,
+            transaction: null,
+            ar: null,
+            successLoaderFinished: false,
+            loggingIn: false,
+            error: "",
+            confirmAmount: 0,
+            rememberMe: false,
+            files: null,
+            screen: "results"
+          };
+        },
+        mounted: function mounted() {
+          // INIT:
+          this.vector = window.crypto.getRandomValues(new Uint8Array(16));
+          this.connectToParent();
+          var savedKey = localStorage.getItem("weaveid-wallet-pk");
+          if (savedKey) {
+            this.jwk = JSON.parse(savedKey);
+            this.gotWallet(this.jwk);
+            //showResults(JSON.parse(savedKey));
+          }
+        },
+        methods: {
+          returnAddy: function () {},
+          mainLogin: function (jwk) {
+            this.arweave.wallets.jwkToAddress(jwk).then((addy) => {
+              this.address = addy;
+              this.returnAddy(addy);
+              console.log("Address = ", this.address);
+              this.arweave.wallets.getBalance(this.address).then((bal) => {
+                this.balance = this.arweave.ar.winstonToAr(bal);
+                console.log("Balance = ", this.balance);
+                fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false")
+                  .then((resp) => resp.json())
+                  .then((data) => {
+                    this.ar = data.filter((coin) => coin.id === "arweave");
+                    if (this.ar && this.ar.length > 0) {
+                      this.ar = this.ar[0];
+                      console.log("Arweave USD Price = $", this.ar);
+                    } else {
+                      this.ar = 0;
+                      console.log("Unable to fetch USD prices.");
+                    }
+                    this.animateCSS("#login-view", "fadeOut").then((msg) => {
+                      document.getElementById("login-view").style.display = "none";
+                      // Show success icon:
+                      this.animateCSS("#success", "fadeIn").then((msg) => {
+                        // Show results page:
+                        this.animateCSS("#success", "fadeOut").then((msg) => {
+                          this.successLoaderFinished = true;
+                          //showResults();
+                          //updateBalance(balance);
+                          // Expose Arweave methods (by overwriting):
+                          if (this.iframeConnection) this.iframeConnection.overwriteArweaveMethods();
+                        });
+                      });
+                    });
+                  });
+              });
             });
-          });
+          },
+          generateKey: function () {
+            if (!this.email || this.email.trim() === "" || !this.password || this.password.trim() === "") {
+              this.error = "Please enter an email and password.";
+            } else {
+              this.loggingIn = true;
 
-        });
-      });
+              // Check wallet with ArweaveJS:
+              this.arweave = Arweave.init({
+                host: "arweave.net", // Hostname or IP address for a Arweave host
+                port: 443, // Port
+                protocol: "https", // Network protocol http or https
+                timeout: 20000, // Network request timeouts in milliseconds
+                logging: false // Enable network request logging
+              });
 
-      // Save the key if they checked "Remember Me":
-      // TODO: Save as encrypted JWK?
-      if(document.getElementById("remember").checked) localStorage.setItem("weaveid-wallet-pk", JSON.stringify(response));
-    }).catch(function(e){
-      // Show errors:
-      showError(e);
-    });
+              // Encrypt the user's email before we store it on the blockchain:
+              this.sha256(this.email).then((encryptedEmail) => {
+                encryptedEmail = btoa(encryptedEmail);
 
-    // Show loader:
-    console.log("Generating private key...", keyPair);
-    showLoader();
-  }
-}
+                // Logging in :
+                this.arweave
+                  .arql({
+                    op: "and",
+                    expr1: {
+                      op: "equals",
+                      expr1: "from",
+                      expr2: "W46vSpKFlVnYyEzCn39bcwGzHslfucPZhcBsmed5uQU"
+                    },
+                    expr2: {
+                      op: "equals",
+                      expr1: "email",
+                      expr2: encryptedEmail
+                    }
+                  })
+                  .then((txids) => {
+                    // --> If user already has a wallet, pull the encrypted JWK hash and decrypt it using decrypt_data()
+                    console.log("txs = ", txids);
+                    //exit;
+                    if (txids && txids.length > 0) {
+                      console.log("User already has wallet!");
+                      // Get the data decode as string data
+                      this.arweave.transactions.getData(txids[0], { decode: true, string: true }).then((data) => {
+                        console.log(data);
+                        data = atob(data);
+                        data = data.split(",");
+                        data = Uint8Array.from(data);
+                        console.log("Encrypted wallet = ", data, this.password);
+                        // <-- Do we need to JSON parse data here ?
+                        this.encryptOrDecrypt("decrypt", data, this.password).then((decrypted) => {
+                          var wallet = this.convertArrayBuffertoString(decrypted);
+                          console.log("Decrypted wallet!!! = ", wallet); //decrypted);
+                          // Hack to cut off weird characters added at beginning:
+                          if (!this.isJson(wallet)) {
+                            let temp = wallet.split('{"kty"');
+                            temp = '{"kty"' + temp[1];
+                            wallet = temp;
+                          }
+                          wallet = JSON.parse(wallet);
+                          console.log("Decrypted wallet!!! = ", wallet); //decrypted);
+                          this.jwk = wallet;
+                          this.gotWallet(wallet);
+                        });
+                      });
+                    } else {
+                      // Generate private key + JWK wallet for Arweave:            //var keyPair = module.getKeyPairFromSeed(btoa(email + "+" + password), { id: 'rsa', modulusLength: 4096 }, {privateKeyFormat: 'pkcs1-pem'}).then(function(response) {
+                      var keyPair = this.arweave.wallets
+                        .generate()
+                        .then((key) => {
+                          this.jwk = key;
+                          this.encryptAndUploadWallet(this.jwk, encryptedEmail).then((data) => {
+                            console.log("New wallet generated!", data);
+                            this.gotWallet(this.jwk);
+                          });
+                          // TODO: Unset key AND response here
+                        })
+                        .catch(function (e) {
+                          // Show errors:
+                          this.error = e;
+                        });
+                    }
 
-function showError(err) {
-  document.getElementById('error').innerHTML = err;
-  document.getElementById('error').style.display = 'block';
-  showLogin();
-}
+                    // Show loader:
+                    console.log("Generating private key...", keyPair);
+                  });
+              });
+            }
+          },
+          encryptAndUploadWallet: function (jwk, encryptedEmail = null) {
+            return new Promise((resolve, reject) => {
+              // JSON stringify the JWK:
+              var json = JSON.stringify(jwk);
+              console.log("Genereated new wallet, jwk = ", jwk);
+              console.log("json = ", json, this.password);
 
-function showLoader() {
-  document.getElementById('login-form').style.display = 'none';
-  document.getElementById('error').style.display = 'none';
-  document.getElementById('loader').style.display = 'block';
-}
+              // Encrypt the JWK using the entered password:
+              return this.encryptOrDecrypt("encrypt", json, this.password).then((encrypted) => {
+                console.log("ENCRYPTED = ", encrypted);
+                var buffer = btoa(encrypted);
+                console.log("BUFFER = ", buffer);
 
-function showResults(privateKey) {
-  if(address) document.getElementById('public-key').innerHTML = address;
-  document.getElementById('loader').style.display = 'none';
-  document.getElementById('login-view').style.display = 'none';
-  document.getElementById('results').style.display = 'block';
-}
+                // Fetch 'createWalletURL' from the WeaveID DAO:
+                var community = new Community(this.arweave);
+                community.setCommunityTx("lIzeO-Yb00iGm0oWK0BCEjxtluUbck1_sH3xeStAgcg").then((response) => {
+                  community.getState().then((state) => {
+                    console.log("STATE = ", state);
+                    var settings = {};
+                    state.settings.forEach((value, key) => {settings[key] = value});
+                    var createWalletURL = settings.createWalletURL ? settings.createWalletURL : "https://weaveid.io/arweave/save.php";
 
-function updateBalance(bal) {
-  document.getElementById('balance').innerHTML = bal;
-}
-
-function showLogin() {
-  document.getElementById('loader').style.display = 'none';
-  document.getElementById('login-view').style.display = 'block';
-  document.getElementById('login-form').style.display = 'block';
-  document.getElementById('results').style.display = 'none';
-}
-
-function showConfirmation(address, amount) {
-  document.getElementById('confirm-address').innerHTML = address;
-  document.getElementById('confirm-amount').innerHTML = amount;
-  document.getElementById('confirm-view').style.display = 'block';
-}
-
-function hideConfirmation() {
-  document.getElementById('confirm-view').style.display = 'none';
-  document.getElementById('confirm-address').innerHTML = '';
-  document.getElementById('confirm-amount').innerHTML = '';
-}
-
-function submitForm(e) {
-  var key=e.keyCode || e.which;
-   if (key==13){
-      generateKey();
-   }
-}
-</script>
-
-
-<!-- Main Template begins -->
-<div class="min-h-screen flex items-center justify-center bg-gray-50 py-2 sm:py-12 px-4 sm:px-6 lg:px-8">
-  <!-- CONFIRM TRANSACTION -->
-  <div id="confirm-view" class="w-full md:w-1/3">
-    <img src="/img/success.svg" class="mx-auto h-24 mb-4"/>
-    <div>
-      Address: <span id="confirm-address">0x0</span> / Amount: <span id="confirm-amount">0</span>
-    </div>
-    <button id="confirm-button" class="group mb-1 relative w-full flex justify-center py-2 px-4 border border-transparent font-medium rounded text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:shadow-outline-indigo active:bg-indigo-700 transition duration-150 ease-in-out">
-      Confirm
-    </button>
-    <button onclick="closeAll()" class="group mb-1 relative w-full flex justify-center py-2 px-4 border border-transparent font-medium rounded text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:shadow-outline-indigo active:bg-indigo-700 transition duration-150 ease-in-out">
-      Cancel
-    </button>
-  </div>
-
-  <!-- SUCCESS -->
-  <div id="success" class="w-full md:w-1/3">
-    <img src="/img/success.svg" class="mx-auto h-24 mb-4"/>
-    <h2 class="text-3xl font-bold text-center text-green-500 mb-6">Success!</h2>
-  </div>
-  <!-- RESULTS -->
-  <div id="results" class="w-full md:w-1/3">
-    <h3 class="font-bold text-center">Your Wallet:</h3>
-    <div id="public-key" class="mt-2"></div>
-    <div id="balance-holder" class="mt-2 text-center">Balance = <b><span id="balance">0.00</span> AR</b></div>
-    <br />
-    <button class="group mb-1 relative w-full flex justify-center py-2 px-4 border border-transparent font-medium rounded text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:shadow-outline-indigo active:bg-indigo-700 transition duration-150 ease-in-out">
-      <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-        <svg class="h-5 w-5 text-indigo-500 group-hover:text-indigo-400 transition ease-in-out duration-150" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
-        </svg>
-      </span>
-      Buy AR with Debit Card
-    </button>
-    <button onclick="closeAll()" class="w-full bg-transparent hover:bg-indigo-500 text-blue-700 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded">
-      Close
-    </button>
-
-  </div>
-
-  <!-- LOGIN VIEW -->
-  <div class="max-w-md w-full" id="login-view">
-    <div>
-      <img class="mx-auto h-24 w-auto" src="img/logo.svg" alt="Workflow" id="logo"/>
-      <h2 class="mt-6 text-center text-3xl leading-9 font-extrabold text-gray-900">
-        Sign in to your WeaveID
-      </h2>
-      <p class="mt-2 text-center text-sm leading-5 text-gray-600">
-        Or
-        <a href="https://www.arweave.org/wallet" target="_blank" class="font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:underline transition ease-in-out duration-150">
-          create your free Arweave wallet
-        </a>
-      </p>
-
-      <!-- ERRORS -->
-      <p class="text-red-500" id="error"></p>
-    </div>
-
-    <!-- LOADER -->
-    <img src="img/pulse.gif" id="loader" />
-
-    <!-- LOGIN FORM -->
-    <div class="mt-8" id="login-form">
-      <div class="rounded-md shadow-sm">
-        <div>
-          <input aria-label="Email address" onkeypress="submitForm(event)" id="email" name="email" type="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:shadow-outline-blue focus:border-blue-300 focus:z-10 sm:text-sm sm:leading-5" placeholder="Email address" />
-        </div>
-        <div class="-mt-px">
-          <input aria-label="Password" onkeypress="submitForm(event)" id="password" name="password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:shadow-outline-blue focus:border-blue-300 focus:z-10 sm:text-sm sm:leading-5" placeholder="Password" />
-        </div>
-      </div>
-
-      <div class="mt-6 flex items-center justify-between">
-        <div class="flex items-center">
-          <input id="remember" type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600 transition duration-150 ease-in-out" />
-          <label for="remember" class="ml-2 block text-sm leading-5 text-gray-900">
-            Remember me
-          </label>
-        </div>
-
-        <div class="text-sm leading-5">
-          <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:underline transition ease-in-out duration-150">
-            Forgot your password?
-          </a>
-        </div>
-      </div>
-
-      <div class="mt-6">
-        <button onclick="generateKey()" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:shadow-outline-indigo active:bg-indigo-700 transition duration-150 ease-in-out">
-          <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-            <svg class="h-5 w-5 text-indigo-500 group-hover:text-indigo-400 transition ease-in-out duration-150" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
-            </svg>
-          </span>
-          Sign in
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script type="text/javascript">
-//if(parent!==top) { // Check if we're in an iFrame. TODO: Fix this
-  var connection = Penpal.connectToParent({
-    // Methods child is exposing to parent. TODO: ADD ETHEREUM METHODS IN HERE
-    methods: {
-      arweaveCreateTransaction(data, callback) {
-        var promise = new Promise((resolve, reject) => {
-          arweave.createTransaction(data, jwk).then(function(response) {
-            console.log("Before resolve = ", response);
-            resolve(response);
-          }).catch(function(e){
-            reject(e);
-          });
-        });
-        if (callback && typeof callback == 'function') {
-            promise.then(callback.bind(null, null), callback);
-        }
-        return promise;
-      },
-      arweaveSign(tx, callback) {
-        showConfirmation(tx.target, tx.quantity);
-        console.log("Waiting for button push...");
-        return new Promise((resy, rejy) => {
-          document.getElementById('confirm-button').addEventListener('click',function(e) {
-          // Dummy wallet for generating dummy object:
-          console.log("RUNNING REST OF THIS");
-          var test_jwk = { d: "ck9wAIHqTn7nCqKvK41Mf5BfqZduLjofOwJ5JMC5JO6G386nFYPVXEAHvgHUp04d-m0aknw-VxuhYxizf4fEoeohhGVhKjqzprHDEjDUr5nxhjNg-xdlXXb5t4vl3nf9J9flmYvb9BszZhrpZbDHtuq0sV9ByR93NVwe8gqv8s_ONPG9e0ZLRXrFw_n7EDBHw0hCVwPAd4RirVmX6BNzbgevzjodixqGpHk7L18LXzMlYY2wfiktW64n-fiId0cQdtWk3xXcOHOxnEt12NoFWtY5VXxAUiCZlr9fb0BVK_NFZGZCUXa6Y64KrZyBLi0XqLIvLAIDFRvCU3FEP5SnUwwA_0DJX3X5JkFAiPkgODqjbn28elXxL-PyFxUsIkk8xlMb6EmmCa3RiK6GGCR1ZK2W0XIu9zO6wvbf7OzvI8YR5_RVXWYCmWORz-GQZdlDo4EaHzsQuy8PGMX6fZ8LG-g6gVKMEyLip5V4qP_KFZnOBYEqlHnqUblRzY2Gm5u-I1DIZMbgKlr_xfODoSIRe7jwTtDuSCTN3DxivOfIBYMlm80cuySpCiGjLPr_LdKfFxR-qBe6PXDKBNFgqCevTUDyH5DyPBPZmN5xhYmjT_fKD2z5hKDZ4euz9ujfwZjcVJ03wDjUfz2vmfCcWryH33rN1ntu-Iz9HWpfrElltGE", dp: "tnwH6efEsxA72KC58GGSCczwd9L67CrTsKhNlt_tctq_A0x9ZBDDbibE6b-udiXgSdFyPNNhf3XX87UGK1dym9XLmHEYCPBxCFqQLP9gu0Ej9Q2qZxJHIZ46Xv3XJjZe-50e6cLO9no4djz3cri9y5FNLKzMoF8S1D5aoRELb_njnA_ITXrDKcH9lHHBgzZg3K7dlafDKlHWBiRBG6G6wD4ugE7V_tzs5WSLZ42xZmlPiHgnKeCV6PKwnRBXbibl5NvJcc0eDgcCJWHSGOfqjPMOuvKSYJT0ae_iq_dclj3LX7_NMV4ARX_kROyTRXfB9bYaOuUiEKpw4Jki7vRt8Q", dq: "SKpQny0mw-oY6TvJNavCYjvXZjoBJwdA_4JnaMsY7y269AYrR1CDoK1axQ2tlaLCE4XvVyXgrML-36SUS6WeuvdSdnAkfhlVRTk8-ij9Sel54cw_ReL4tPktkYOo36ZsW1zTNaTeL0byfWPx5l8YA65Fd0-QwGpcrpqo7zV70teIMW5fa14-LoIw3gXuQvZ85Y4I91CnRR6ELQ7iob72iCxC_9G8F1zaXZdpnrubPWC6iVw_3-UFmipZCmSDIoyhV8_JyTKj6E8Udd75_4EX81wX75naItg5Pyw4mP5YnzK9mwdoyDP48E6QO7a6sgCAcnIC1nWjDsEf6oyuZr0xFQ", e: "AQAB", ext: true, kty: "RSA", n: "n64e3Kx8f8cFIzcT1JcU3t9dlG9xjJWgeQOUkSeaaGo6Lf8ImbdgwZWkA3UGZrq7Ap04SaKhwDDZjposQ89k0xi_c6a3pNTAKnWyXSHNfxY0FAUD_GD_kXOySl7uF_QaRyMxGFge5-CcdSdv8zjBgoMm2eQfkBT0evGNfVA46MDzFTyUwFp70ayN3R7KpYxob6nF-1zH0LUJ8L6z5qf-b8RyOifU5lrDVuO7r-jsPNfuIMy9x0LJIi1f-H6bAkoIgDJwV_mDiZ0umVXPho7dY2T4GOmSjetUOVIqd2NmJfrmZWGI08OP9QurB06tUKN3fJKKaYO3Zq-njkLfuT6Gt1Mv3XQ6dw29JHUWpXYslMCc-TqQeAYdgzcMY4HAHr-Ws6a068FfBxHVtgjof-aFvPSbbxkgnIYhF6LUnh3gD8mZB0BUH-fU3M_7U9zDaPgGtDnxOyaCVUN3qmBHQulak8X5liBXosTml8YKkyTIwJhhWLhpy0k6kQgIZI1kPecKXrsBB1_aj-NCLXjppR97gEsOZcaezk2TSIIT-G-I0FjmUY--XynGzQpq8H6MM-4aUKrJ2_AQn0bKm2Sd8YKlsm5hP5F6IZA-sWCi1E-ilXo7zfhUIRq3Zpj-LV0iZ_UZu1o0sf3I0EMoBAsCGilo79kT3yQJxCOkErVfa2ye4pM", p: "1HB6HYnVjvTA_sit0xZ0-WklYg61rG1IQ8rg5GB_RFInD_Mymxy8uuO_Ufur_Z5jPaunvIGAiljMfoNNBCw6S1fREBnU08Pfzt4-GOGc85ptBSMH19KElVMJC7cNJruFjo1YLY30ZqGEv-NlPeG8ItjcAwdIIIDelSjr4TQdi2SIKGVx5ACDIYdTz3ea9hq4h2bj-OTdabRCnC-d69veP8bhCNP5OReXPRZN1WevVGl0Kqvad0k68PEXdqL_vQ4GPOgEt-PXhjnFVyVlOBsU8Kxq33JT1PXfeNWs9sTZm-6LnKm7LQ1JLKNQYieeJj-NP6ntO59c-Z4lqo33q2plFw", q: "wGwrK4OlRlY21hAZgJgt5-v9vukKYrSKuA1k-o3VA4i8m3WCYQCkBkICPQ3WGa1O6olgExYvjAV1MS3qbNEDBCCzi82tKz7vkcKvCE5GzXpq2DAW3H35PAt8vmGGnjukiZXgxDP3OtueRle6rcQs1pi1MwQmBhf9B-1LJZAXF0G0WuMObU9yTAf6n5fcbSf09AVnpiY8p2xizNG6jtLfZcgH_H2dZJ_Z4I1pudxViHyfMVvQgKU6POImV4u1o4C6ZpoehknN8hETR8p1eEIx7JMfqMyT9zYhXO8bKkj7dE9dyQsTiRhJ8NSs2UBlC9so63OVy1A2KhnzBoMwyTRT5Q", qi: "cXWAHLucCcopSVkIVmvOQ50MktM6MRtuap3CebXF1p2rARPfG8baNgrXb9itLFSGacQUrXcrHRGhAd0i4RrIG6W-OGzNpz-F7cv_9s5Fihw7e9P1DZ0tyYz8r1Efm0WZum_4Hdm1vbrjaHGxgJWrX-tvO_Ou4FTcFISHgMI74tYFs_FbTLgL0CCy2TCJ4UJvdBJk1UlFqLfdGm1y8zh1QNzht_H3okoptn6J4hLhEFdMTnDMcsxWorW7SQ4jfGeg-5NAfDb9EJRGKrzDM7YJSPr04HMFWpwhtF_XZ-nTgdyrCNe_kqSA8ogNKVRD-e0Occ5JIUx80JLsvzymXT_Tgg", };
-
-          return arweave.createTransaction({ target: '1seRanklLU_1VTGkEk7P0xAwMJfA7owA1JHW5KyZKlY', quantity: arweave.ar.arToWinston('0.0005') }, test_jwk).then(function(dummy) {
-            Object.keys(tx).forEach(function(key) {
-              dummy[key] = tx[key];
-            });
-            console.log("My page got: ", dummy);
-
-            // Real code starts here:
-            return arweave.transactions.sign(dummy, jwk).then(function(response) {
-                return new Promise((resolve) => {
-                  closeAll();
-                  resy(dummy);
+                    // Upload to Arweave tagged with entered Email and "weaveid" via API call and unique timestamp
+                    return fetch(createWalletURL, {
+                      method: "post",
+                      body: btoa('{"hash": "' + buffer + '", "email": "' + encryptedEmail + '", "timestamp": "' + new Date() + '"}')
+                    })
+                    .then((response) => {
+                      return response.json();
+                    })
+                    .then((data) => {
+                      resolve(data);
+                    });
+                  });
                 });
-              }).catch(function(e){
-                //reject(e);
-              });
-          });
-
-          }, {once: true});
-        });
-    },
-    arweavePost(tx, callback) {
-      var promise = new Promise((resolve, reject) => {
-        arweave.transactions.post(tx).then(function(returnValue) {
-          console.log("Submitted main transaction = ", returnValue);
-          // SEND PST FEE:
-          var weightedHolder = 'W46vSpKFlVnYyEzCn39bcwGzHslfucPZhcBsmed5uQU'; // Current 100% holder of PST. This will be changed in the future.
-          var quantity = tx.quantity * 0.001; // 0.01% transaction fee
-          arweave.createTransaction({ target: weightedHolder, quantity: quantity.toString() }, jwk).then(function(c_tx) {
-            console.log("Created PST fee TX: ", c_tx);
-            arweave.transactions.sign(c_tx, jwk).then(function(c_r) {
-              console.log("Signed PST fee TX: ", c_tx, c_r);
-              arweave.transactions.post(c_tx).then(function(c_r3) {
-                console.log("Submitted PST fee TX! ", c_tx, c_r3);
-
-                // Resolve promise:
-                resolve(returnValue);
               });
             });
-          });
-        });
+          },
+          setFiles: function () {
+            this.files = event.target.files;
+          },
+          getImportedWalletFile: function () {
+            return new Promise((resolve, reject) => {
+              // Get wallet file from frontend form and read contents
+              if (!this.files || this.files.length <= 0) reject("No file chosen!");
+              var fr = new FileReader();
+              fr.onload = function (e) {
+                var result = JSON.parse(e.target.result);
+                resolve(result);
+              };
+              return fr.readAsText(this.files.item(0));
+            });
+          },
+          importWallet: function () {
+            this.getImportedWalletFile()
+              .then((jwk) => {
+                // Set the current wallet file to the passed in JWK:
+                this.jwk = jwk;
+
+                // Form validation:
+                if (!this.email || this.email.trim() === "" || !this.password || this.password.trim() === "") {
+                  this.error = "Please enter an email and password.";
+                } else {
+                  this.loggingIn = true;
+
+                  // Initialize ArweaveJS:
+                  if (!this.arweave) {
+                    this.arweave = Arweave.init({
+                      host: "arweave.net", // Hostname or IP address for a Arweave host
+                      port: 443, // Port
+                      protocol: "https", // Network protocol http or https
+                      timeout: 20000, // Network request timeouts in milliseconds
+                      logging: false // Enable network request logging
+                    });
+                  }
+
+                  // TODO: Get the user's balance
+                  // if balance is > $2.00 USD, take fee
+                  // --> calculate 0.1% fee using same code below (line ~600+ in arweavePost())
+                  // Cap the fee
+                  // if PST referrer was set on WeaveID init, split fee 50/50 between PST holders and referrer PST
+                  // send fee transactions
+                  // continue
+
+                  // Encrypt the user's email before we store it on the blockchain:
+                  this.sha256(this.email).then((encryptedEmail) => {
+                    encryptedEmail = btoa(encryptedEmail);
+
+                    // Encrypt & upload the wallet:
+                    this.encryptAndUploadWallet(this.jwk, encryptedEmail).then((data) => {
+                      console.log("New wallet generated!", data);
+                      this.gotWallet(this.jwk);
+                    });
+                  });
+                }
+              })
+              .catch((e) => {
+                this.error = e;
+              });
+          },
+          gotWallet: function (jwk) {
+            // Main login:
+            this.mainLogin(jwk);
+            // Save the key if they checked "Remember Me":
+            // TODO: Save as encrypted JWK?
+            if (this.rememberMe) localStorage.setItem("weaveid-wallet-pk", JSON.stringify(jwk));
+          },
+          encryptOrDecrypt: function (action, message, password) {
+            promise_key = window.crypto.subtle.importKey("raw", this.convertStringToArrayBuffer(password), { name: "PBKDF2" }, false, ["deriveKey"]);
+            return promise_key
+              .then((importedPassword) => {
+                return window.crypto.subtle.deriveKey(
+                  {
+                    name: "PBKDF2",
+                    salt: this.convertStringToArrayBuffer("WeaveID"),
+                    iterations: 100000,
+                    hash: "SHA-256"
+                  },
+                  importedPassword,
+                  {
+                    name: "AES-CBC",
+                    length: 128
+                  },
+                  false,
+                  ["encrypt", "decrypt"]
+                );
+              })
+              .then((key) => {
+                key_object = key;
+                if (action === "encrypt") {
+                  return this.encrypt_data(message);
+                } else {
+                  return this.decrypt_data(message);
+                }
+              });
+            promise_key.catch = function (e) {
+              alert("Error while importing key: " + e.message);
+            };
+          },
+          encrypt_data: function (secretmessage) {
+            return new Promise((resolve, reject) => {
+              var abMessage = this.convertStringToArrayBuffer(this.vector + secretmessage);
+              this.encrypt_promise = window.crypto.subtle.encrypt({ name: "AES-CBC", iv: this.vector }, key_object, abMessage);
+              return this.encrypt_promise.then(
+                function (result) {
+                  this.encrypted_data = new Uint8Array(result);
+                  resolve(this.encrypted_data);
+                },
+                function (e) {
+                  alert("Error while encrypting data: " + e.message);
+                }
+              );
+            });
+          },
+          decrypt_data: function (encrypted_text) {
+            return new Promise((resolve, reject) => {
+              var abMessage = encrypted_text;
+              this.decrypt_promise = window.crypto.subtle.decrypt({ name: "AES-CBC", iv: this.vector }, key_object, abMessage);
+              return this.decrypt_promise.then(
+                function (result) {
+                  console.log(result);
+                  resolve(new Uint8Array(result));
+                },
+                function (e) {
+                  alert("Error while decrypting data: " + e.message);
+                  console.log("Error while decrypting data: ", e);
+                  reject(e);
+                }
+              );
+            });
+          },
+          sha256: function (message) {
+            return new Promise((resolve, reject) => {
+              // encode as UTF-8
+              const msgBuffer = new TextEncoder("utf-8").encode(message);
+              // hash the message
+              return crypto.subtle.digest("SHA-256", msgBuffer).then((hashBuffer) => {
+                // convert ArrayBuffer to Array
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                // convert bytes to hex string
+                const hashHex = hashArray.map((b) => ("00" + b.toString(16)).slice(-2)).join("");
+                resolve(hashHex);
+              });
+            });
+          },
+          convertStringToArrayBuffer: function (str) {
+            //https://stackoverflow.com/a/45658748
+            var encoder = new TextEncoder("utf-8");
+            return encoder.encode(str);
+          },
+          convertArrayBuffertoString: function (buffer) {
+            var decoder = new TextDecoder("utf-8");
+            return decoder.decode(buffer);
+          },
+          isJson: function (str) {
+            try {
+              return JSON.parse(str);
+            } catch (e) {
+              return false;
+            }
+          },
+          copyToClipboard: function (str) {
+            var el = document.createElement("textarea");
+            el.value = str;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand("copy");
+            document.body.removeChild(el);
+          },
+          animateCSS: function (element, animation, prefix = "animate__", speed = "faster") {
+            // We create a Promise and return it
+            return new Promise((resolve, reject) => {
+              var animationName = `${prefix}${animation}`;
+              var animationSpeed = `${prefix}${speed}`;
+              var node = document.querySelector(element);
+              if (node) {
+                node.classList.add(`${prefix}animated`, animationName, animationSpeed);
+
+                // When the animation ends, we clean the classes and resolve the Promise
+                function handleAnimationEnd() {
+                  node.classList.remove(`${prefix}animated`, animationName);
+                  node.removeEventListener("animationend", handleAnimationEnd);
+                  resolve("Animation ended");
+                }
+                node.addEventListener("animationend", handleAnimationEnd);
+              }
+            });
+          },
+          connectToParent: function () {
+            //if(parent!==top) { // Check if we're in an iFrame. TODO: Fix this
+            var connection = Penpal.connectToParent({
+              // Methods child is exposing to parent. TODO: ADD ETHEREUM METHODS IN HERE
+              methods: {
+                getAddress() {
+                  return v.address;
+                },
+                getWallet() {
+                  return v.jwk;
+                },
+                arweaveCreateTransaction(data, callback) {
+                  var promise = new Promise(function (resolve, reject) {
+                    v.arweave
+                      .createTransaction(data, v.jwk)
+                      .then(function (response) {
+                        console.log("Before resolve = ", response);
+                        resolve(response);
+                      })
+                      .catch(function (e) {
+                        reject(e);
+                      });
+                  });
+                  if (callback && typeof callback == "function") {
+                    promise.then(callback.bind(null, null), callback);
+                  }
+                  return promise;
+                },
+                arweaveSign(tx, callback) {
+                  return new Promise((resy, rejy) => {
+                    return v.showConfirmation(tx.target, tx.quantity).then(function () {
+                      console.log("Waiting for button push...");
+                      document.getElementById("confirm-button").addEventListener(
+                        "click",
+                        function (e) {
+                          // Dummy wallet for generating dummy object:
+                          console.log("RUNNING REST OF THIS");
+                          var test_jwk = {
+                            d:
+                              "ck9wAIHqTn7nCqKvK41Mf5BfqZduLjofOwJ5JMC5JO6G386nFYPVXEAHvgHUp04d-m0aknw-VxuhYxizf4fEoeohhGVhKjqzprHDEjDUr5nxhjNg-xdlXXb5t4vl3nf9J9flmYvb9BszZhrpZbDHtuq0sV9ByR93NVwe8gqv8s_ONPG9e0ZLRXrFw_n7EDBHw0hCVwPAd4RirVmX6BNzbgevzjodixqGpHk7L18LXzMlYY2wfiktW64n-fiId0cQdtWk3xXcOHOxnEt12NoFWtY5VXxAUiCZlr9fb0BVK_NFZGZCUXa6Y64KrZyBLi0XqLIvLAIDFRvCU3FEP5SnUwwA_0DJX3X5JkFAiPkgODqjbn28elXxL-PyFxUsIkk8xlMb6EmmCa3RiK6GGCR1ZK2W0XIu9zO6wvbf7OzvI8YR5_RVXWYCmWORz-GQZdlDo4EaHzsQuy8PGMX6fZ8LG-g6gVKMEyLip5V4qP_KFZnOBYEqlHnqUblRzY2Gm5u-I1DIZMbgKlr_xfODoSIRe7jwTtDuSCTN3DxivOfIBYMlm80cuySpCiGjLPr_LdKfFxR-qBe6PXDKBNFgqCevTUDyH5DyPBPZmN5xhYmjT_fKD2z5hKDZ4euz9ujfwZjcVJ03wDjUfz2vmfCcWryH33rN1ntu-Iz9HWpfrElltGE",
+                            dp:
+                              "tnwH6efEsxA72KC58GGSCczwd9L67CrTsKhNlt_tctq_A0x9ZBDDbibE6b-udiXgSdFyPNNhf3XX87UGK1dym9XLmHEYCPBxCFqQLP9gu0Ej9Q2qZxJHIZ46Xv3XJjZe-50e6cLO9no4djz3cri9y5FNLKzMoF8S1D5aoRELb_njnA_ITXrDKcH9lHHBgzZg3K7dlafDKlHWBiRBG6G6wD4ugE7V_tzs5WSLZ42xZmlPiHgnKeCV6PKwnRBXbibl5NvJcc0eDgcCJWHSGOfqjPMOuvKSYJT0ae_iq_dclj3LX7_NMV4ARX_kROyTRXfB9bYaOuUiEKpw4Jki7vRt8Q",
+                            dq:
+                              "SKpQny0mw-oY6TvJNavCYjvXZjoBJwdA_4JnaMsY7y269AYrR1CDoK1axQ2tlaLCE4XvVyXgrML-36SUS6WeuvdSdnAkfhlVRTk8-ij9Sel54cw_ReL4tPktkYOo36ZsW1zTNaTeL0byfWPx5l8YA65Fd0-QwGpcrpqo7zV70teIMW5fa14-LoIw3gXuQvZ85Y4I91CnRR6ELQ7iob72iCxC_9G8F1zaXZdpnrubPWC6iVw_3-UFmipZCmSDIoyhV8_JyTKj6E8Udd75_4EX81wX75naItg5Pyw4mP5YnzK9mwdoyDP48E6QO7a6sgCAcnIC1nWjDsEf6oyuZr0xFQ",
+                            e: "AQAB",
+                            ext: true,
+                            kty: "RSA",
+                            n:
+                              "n64e3Kx8f8cFIzcT1JcU3t9dlG9xjJWgeQOUkSeaaGo6Lf8ImbdgwZWkA3UGZrq7Ap04SaKhwDDZjposQ89k0xi_c6a3pNTAKnWyXSHNfxY0FAUD_GD_kXOySl7uF_QaRyMxGFge5-CcdSdv8zjBgoMm2eQfkBT0evGNfVA46MDzFTyUwFp70ayN3R7KpYxob6nF-1zH0LUJ8L6z5qf-b8RyOifU5lrDVuO7r-jsPNfuIMy9x0LJIi1f-H6bAkoIgDJwV_mDiZ0umVXPho7dY2T4GOmSjetUOVIqd2NmJfrmZWGI08OP9QurB06tUKN3fJKKaYO3Zq-njkLfuT6Gt1Mv3XQ6dw29JHUWpXYslMCc-TqQeAYdgzcMY4HAHr-Ws6a068FfBxHVtgjof-aFvPSbbxkgnIYhF6LUnh3gD8mZB0BUH-fU3M_7U9zDaPgGtDnxOyaCVUN3qmBHQulak8X5liBXosTml8YKkyTIwJhhWLhpy0k6kQgIZI1kPecKXrsBB1_aj-NCLXjppR97gEsOZcaezk2TSIIT-G-I0FjmUY--XynGzQpq8H6MM-4aUKrJ2_AQn0bKm2Sd8YKlsm5hP5F6IZA-sWCi1E-ilXo7zfhUIRq3Zpj-LV0iZ_UZu1o0sf3I0EMoBAsCGilo79kT3yQJxCOkErVfa2ye4pM",
+                            p:
+                              "1HB6HYnVjvTA_sit0xZ0-WklYg61rG1IQ8rg5GB_RFInD_Mymxy8uuO_Ufur_Z5jPaunvIGAiljMfoNNBCw6S1fREBnU08Pfzt4-GOGc85ptBSMH19KElVMJC7cNJruFjo1YLY30ZqGEv-NlPeG8ItjcAwdIIIDelSjr4TQdi2SIKGVx5ACDIYdTz3ea9hq4h2bj-OTdabRCnC-d69veP8bhCNP5OReXPRZN1WevVGl0Kqvad0k68PEXdqL_vQ4GPOgEt-PXhjnFVyVlOBsU8Kxq33JT1PXfeNWs9sTZm-6LnKm7LQ1JLKNQYieeJj-NP6ntO59c-Z4lqo33q2plFw",
+                            q:
+                              "wGwrK4OlRlY21hAZgJgt5-v9vukKYrSKuA1k-o3VA4i8m3WCYQCkBkICPQ3WGa1O6olgExYvjAV1MS3qbNEDBCCzi82tKz7vkcKvCE5GzXpq2DAW3H35PAt8vmGGnjukiZXgxDP3OtueRle6rcQs1pi1MwQmBhf9B-1LJZAXF0G0WuMObU9yTAf6n5fcbSf09AVnpiY8p2xizNG6jtLfZcgH_H2dZJ_Z4I1pudxViHyfMVvQgKU6POImV4u1o4C6ZpoehknN8hETR8p1eEIx7JMfqMyT9zYhXO8bKkj7dE9dyQsTiRhJ8NSs2UBlC9so63OVy1A2KhnzBoMwyTRT5Q",
+                            qi:
+                              "cXWAHLucCcopSVkIVmvOQ50MktM6MRtuap3CebXF1p2rARPfG8baNgrXb9itLFSGacQUrXcrHRGhAd0i4RrIG6W-OGzNpz-F7cv_9s5Fihw7e9P1DZ0tyYz8r1Efm0WZum_4Hdm1vbrjaHGxgJWrX-tvO_Ou4FTcFISHgMI74tYFs_FbTLgL0CCy2TCJ4UJvdBJk1UlFqLfdGm1y8zh1QNzht_H3okoptn6J4hLhEFdMTnDMcsxWorW7SQ4jfGeg-5NAfDb9EJRGKrzDM7YJSPr04HMFWpwhtF_XZ-nTgdyrCNe_kqSA8ogNKVRD-e0Occ5JIUx80JLsvzymXT_Tgg"
+                          };
+
+                          return v.arweave.createTransaction({ target: "1seRanklLU_1VTGkEk7P0xAwMJfA7owA1JHW5KyZKlY", quantity: v.arweave.ar.arToWinston("0.0005") }, test_jwk).then(function (dummy) {
+                            Object.keys(tx).forEach(function (key) {
+                              dummy[key] = tx[key];
+                            });
+                            console.log("My page got: ", dummy);
+
+                            // Real code starts here:
+                            return v.arweave.transactions
+                              .sign(dummy, v.jwk)
+                              .then(function (response) {
+                                v.closeAll();
+                                resy(dummy);
+                                return dummy;
+                              })
+                              .catch(function (e) {
+                                //reject(e);
+                              });
+                          });
+                        },
+                        { once: true }
+                      );
+                    });
+                  });
+                },
+                arweavePost(tx, callback) {
+                  var promise = new Promise((resolve, reject) => {
+                    v.arweave.transactions.post(tx).then(function (returnValue) {
+                      console.log("Submitted main transaction = ", returnValue);
+                      // SEND PST FEE:
+                      var weightedHolder = "W46vSpKFlVnYyEzCn39bcwGzHslfucPZhcBsmed5uQU"; // Current 100% holder of PST. This will be changed in the future.
+                      var quantity = tx.quantity * this.fee; // 0.1% transaction fee
+                      v.arweave.createTransaction({ target: weightedHolder, quantity: quantity.toString() }, v.jwk).then(function (c_tx) {
+                        console.log("Created PST fee TX: ", c_tx);
+                        v.arweave.transactions.sign(c_tx, v.jwk).then(function (c_r) {
+                          console.log("Signed PST fee TX: ", c_tx, c_r);
+                          v.arweave.transactions.post(c_tx).then(function (c_r3) {
+                            console.log("Submitted PST fee TX! ", c_tx, c_r3);
+
+                            // Resolve promise:
+                            resolve(returnValue);
+                          });
+                        });
+                      });
+                    });
+                  });
+                }
+              }
+            });
+
+            connection.promise.then((parent) => {
+              this.iframeConnection = parent;
+              this.closeModal = this.iframeConnection.closeModal;
+              this.returnAddy = this.iframeConnection.returnAddress;
+            });
+          },
+          showConfirmation: function (address, amount) {
+            return new Promise((resolve, reject) => {
+              this.address = address;
+              this.confirmAmount = parseFloat(this.arweave.ar.winstonToAr(amount)).toFixed(6);
+              resolve(true);
+            });
+          },
+          hideConfirmation: function () {
+            this.confirmAmount = null;
+          },
+          showSend: function () {
+            this.screen = "send";
+          },
+          hideSend: function () {
+            this.screen = "results";
+          },
+          send: function () {
+            let amount = 1; // TODO: Get from UI
+            if (this.address && amount > 0) {
+              this.showConfirmation(this.address, amount);
+              this.screen = "results";
+            }
+          },
+          closeAll: function () {
+            this.hideConfirmation();
+            this.closeModal();
+          }
+        },
+        computed: {
+          loggedIn: function () {
+            return !!(this.jwk && this.address && this.successLoaderFinished);
+          },
+          balanceFixed: function () {
+            return parseFloat(this.balance).toFixed(4);
+          },
+          balanceUSD: function () {
+            if (!this.balance || !this.ar) return "0.000";
+            return (parseFloat(this.balance) * parseFloat(this.ar.current_price)).toFixed(2);
+          },
+          confirmAmountUSD: function () {
+            if (!this.confirmAmount || !this.ar) return "0.00";
+            return (parseFloat(this.confirmAmount) * parseFloat(this.ar.current_price)).toFixed(2);
+          },
+          confirmAmountFeeUSD: function () {
+            return (this.fee * parseFloat(this.confirmAmountUSD)).toFixed(2);
+          },
+          confirmAmountTotalUSD: function () {
+            return (parseFloat(this.confirmAmountUSD) + parseFloat(this.confirmAmountFeeUSD)).toFixed(2);
+          },
+          priceChange: function () {
+            if (!this.ar) return 0;
+            return parseFloat(this.ar.price_change_percentage_24h).toFixed(2);
+          }
+        }
       });
-    }
-   }
-  });
-
-  connection.promise.then((parent) => {
-    iframeConnection = parent;
-    closeModal = iframeConnection.closeModal;
-  });
-</script>
-
-</body>
+    </script>
+  </body>
 </html>
