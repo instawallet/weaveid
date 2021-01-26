@@ -87,21 +87,15 @@
 
           <p class="subtitle mt-8 mb-4">Activity</p>
           <div class="tx-holder w-full">
-            <div class="tx flex py-3">
-              <div class="six-pct mr-4">
-                <i class="fas fa-share receive-icon"></i>
-              </div>
-              <div class="w-1/2 tx-details">
-                <p class="font-bold">Sent</p>
-                <p class="semigray">To: ASCtgBTHHJegeBFNntmmuiETBRjyukuRht</p>
-              </div>
-              <div class="w-1/2 tx-amount">
-                <p class="red">-0.0017 AR</p>
-              </div>
+            <!-- TX's Zero State -->
+            <div v-if="!transactions || transactions.length === 0" class="tx-zero-state">
+              <center><div id="usd-value">NO RECENT ACTIVITY</div></center>
             </div>
-            <div class="tx flex py-3">
+            <!-- TX -->
+            <div class="tx flex py-3" v-for="tx in transactions">
               <div class="six-pct mr-4">
-                <svg class="receive-icon" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 285 285" style="enable-background: new 0 0 285 285;" xml:space="preserve">
+                <i v-if="tx.type == 'send'" class="fas fa-share receive-icon"></i>
+                <svg v-else class="receive-icon" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 285 285" style="enable-background: new 0 0 285 285;" xml:space="preserve">
                   <g>
                     <path
                       style="fill: #231f20;"
@@ -127,11 +121,17 @@
                 </svg>
               </div>
               <div class="w-1/2 tx-details">
-                <p class="font-bold">Received</p>
-                <p class="semigray">From: FrTUJYTEFFgerFVGRfgrwrwWEFwDacs</p>
+                <span v-if="tx.type == 'send'">
+                  <p class="font-bold">Sent</p>
+                  <p class="semigray">To: {{ tx.target }}</p>
+                </span>
+                <span v-else-if="tx.type == 'receive'">
+                  <p class="font-bold">Received</p>
+                  <p class="semigray">To: {{ tx.target }}</p>
+                </span>
               </div>
               <div class="w-1/2 tx-amount">
-                <p class="green">+0.0017 AR</p>
+                <p :class="tx.type == 'send' ? 'red' : 'green'">{{ tx.type == 'send' ? '-' : '+' }}{{ parseFloat(arweave.ar.winstonToAr(tx.quantity)).toFixed(4) }} AR</p>
               </div>
             </div>
           </div>
@@ -259,7 +259,8 @@
             confirmAmount: 0,
             rememberMe: false,
             files: null,
-            screen: "results"
+            screen: "results",
+            transactions: []
           };
         },
         mounted: function mounted() {
@@ -280,9 +281,11 @@
               this.address = addy;
               this.returnAddy(addy);
               console.log("Address = ", this.address);
+              // Fetch balance
               this.arweave.wallets.getBalance(this.address).then((bal) => {
                 this.balance = this.arweave.ar.winstonToAr(bal);
                 console.log("Balance = ", this.balance);
+                // Fetch USD price
                 fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false")
                   .then((resp) => resp.json())
                   .then((data) => {
@@ -301,10 +304,37 @@
                         // Show results page:
                         this.animateCSS("#success", "fadeOut").then((msg) => {
                           this.successLoaderFinished = true;
-                          //showResults();
-                          //updateBalance(balance);
                           // Expose Arweave methods (by overwriting):
                           if (this.iframeConnection) this.iframeConnection.overwriteArweaveMethods();
+
+                          // Fetch transactions:
+                          this.arweave
+                            .arql({
+                              op: "or",
+                              expr1: {
+                                op: "equals",
+                                expr1: "from",
+                                expr2: this.address
+                              },
+                              expr2: {
+                                op: "equals",
+                                expr1: "to",
+                                expr2: this.address
+                              }
+                            })
+                            .then((txids) => {
+                              console.log("Your txs = ", txids);
+                              for (var i in txids) {
+                                this.arweave.transactions.get(txids[i]).then((data) => {
+                                  this.transactions.push({
+                                    id: txids[i],
+                                    quantity: data.quantity,
+                                    target: data.target,
+                                    type: data.target.toLowerCase() === this.address.toLowerCase() ? "receive" : "send"
+                                  });
+                                });
+                              }
+                            });
                         });
                       });
                     });
@@ -418,20 +448,27 @@
                   community.getState().then((state) => {
                     console.log("STATE = ", state);
                     var settings = {};
-                    state.settings.forEach((value, key) => {settings[key] = value});
+                    state.settings.forEach((value, key) => {
+                      settings[key] = value;
+                    });
                     var createWalletURL = settings.createWalletURL ? settings.createWalletURL : "https://weaveid.io/arweave/save.php";
 
                     // Upload to Arweave tagged with entered Email and "weaveid" via API call and unique timestamp
                     return fetch(createWalletURL, {
                       method: "post",
+                      headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'multipart/form-data'
+                      },
+                      mode: 'cors', // this cannot be 'no-cors'
                       body: btoa('{"hash": "' + buffer + '", "email": "' + encryptedEmail + '", "timestamp": "' + new Date() + '"}')
                     })
-                    .then((response) => {
-                      return response.json();
-                    })
-                    .then((data) => {
-                      resolve(data);
-                    });
+                      .then((response) => {
+                        return response.json();
+                      })
+                      .then((data) => {
+                        resolve(data);
+                      });
                   });
                 });
               });
